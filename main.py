@@ -1,1 +1,18 @@
-print ("Hello")
+from fastapi import FastAPI
+
+app = FastAPI()
+
+
+@app.get("/")
+def home():
+    return {"message": "FastAPI is working!"}
+
+
+@app.get("/hello")
+def hello():
+    return {"message": "Hello from FastAPI"}
+
+
+@app.get("/user/{name}")
+def get_user(name: str):
+    return {"name": name}
