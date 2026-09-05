@@ -1,7 +1,12 @@
 from app.schemas.auth import Token, TokenPayload, LoginRequest
-from app.schemas.user import UserCreate, UserResponse
-from app.schemas.student import StudentProfileResponse, StudentProfileUpdate, PlacementPipelineResponse, EnrolledCourseItem
-from app.schemas.college import CohortCreate, CohortResponse, StudentSummary, CollegeDashboardStats
+from app.schemas.user import (
+    UserCreate,
+    UserResponse,
+    StudentRegister,
+    JobSeekerRegister,
+    HospitalRegister,
+    CollegeRegister,
+)
 
 __all__ = [
     "Token",
@@ -9,12 +14,8 @@ __all__ = [
     "LoginRequest",
     "UserCreate",
     "UserResponse",
-    "StudentProfileResponse",
-    "StudentProfileUpdate",
-    "PlacementPipelineResponse",
-    "EnrolledCourseItem",
-    "CohortCreate",
-    "CohortResponse",
-    "StudentSummary",
-    "CollegeDashboardStats",
+    "StudentRegister",
+    "JobSeekerRegister",
+    "HospitalRegister",
+    "CollegeRegister",
 ]

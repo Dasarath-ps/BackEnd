@@ -9,14 +9,26 @@ from app.models.student import StudentProfile
 from app.models.job_seeker import JobSeekerProfile
 from app.models.hospital import Hospital
 from app.schemas.auth import Token, LoginRequest
-from app.schemas.user import UserCreate, UserResponse
+from app.schemas.user import (
+    UserResponse,
+    StudentRegister,
+    JobSeekerRegister,
+    HospitalRegister,
+    CollegeRegister,
+)
 from app.dependencies.auth import get_current_user
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
-@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-def register(user_in: UserCreate, db: Session = Depends(get_db)):
+@router.post(
+    "/register/student",
+    response_model=UserResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Register as a Nursing Student",
+)
+def register_student(user_in: StudentRegister, db: Session = Depends(get_db)):
+    """Self-registration for nursing students / trainees."""
     existing_user = db.query(User).filter(User.email == user_in.email).first()
     if existing_user:
         raise HTTPException(
@@ -24,49 +36,158 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)):
             detail="Email is already registered in NurseBridge."
         )
 
-    # Create base user
-    new_user = User(
+    user = User(
         email=user_in.email,
         hashed_password=get_password_hash(user_in.password),
         full_name=user_in.full_name,
-        role=user_in.role,
-        is_active=True
+        role=UserRole.STUDENT,
+        is_active=True,
     )
-    db.add(new_user)
+    db.add(user)
     db.flush()
 
-    # Automatically initialize role-specific profile
-    if user_in.role == UserRole.STUDENT:
-        student_profile = StudentProfile(
-            user_id=new_user.id,
-            college_id=user_in.college_id,
-            cohort_id=user_in.cohort_id
-        )
-        db.add(student_profile)
-    elif user_in.role == UserRole.COLLEGE:
-        college_profile = College(
-            user_id=new_user.id,
-            name=user_in.full_name,
-            code=f"COL-{new_user.id:04d}"
-        )
-        db.add(college_profile)
-    elif user_in.role == UserRole.JOB_SEEKER:
-        job_seeker_profile = JobSeekerProfile(
-            user_id=new_user.id,
-            title="Registered Nurse"
-        )
-        db.add(job_seeker_profile)
-    elif user_in.role == UserRole.HOSPITAL:
-        hospital_profile = Hospital(
-            user_id=new_user.id,
-            name=user_in.full_name,
-            contact_email=new_user.email
-        )
-        db.add(hospital_profile)
-
+    student_profile = StudentProfile(
+        user_id=user.id,
+        phone=user_in.phone,
+        course=user_in.course or "Nursing",
+        batch=user_in.batch,
+        college_id=user_in.college_id,
+        cohort_id=user_in.cohort_id,
+        skills=user_in.skills,
+        languages=user_in.languages,
+    )
+    db.add(student_profile)
     db.commit()
-    db.refresh(new_user)
-    return new_user
+    db.refresh(user)
+    return user
+
+
+@router.post(
+    "/register/job-seeker",
+    response_model=UserResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Register as an independent Job Seeker (Nurse)",
+)
+def register_job_seeker(user_in: JobSeekerRegister, db: Session = Depends(get_db)):
+    """Public self-registration for nurses looking for hospital placements."""
+    existing_user = db.query(User).filter(User.email == user_in.email).first()
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email is already registered in NurseBridge."
+        )
+
+    user = User(
+        email=user_in.email,
+        hashed_password=get_password_hash(user_in.password),
+        full_name=user_in.full_name,
+        role=UserRole.JOB_SEEKER,
+        is_active=True,
+    )
+    db.add(user)
+    db.flush()
+
+    profile = JobSeekerProfile(
+        user_id=user.id,
+        title=user_in.title or "Registered Nurse",
+        experience_years=user_in.experience_years or 0,
+        skills=user_in.skills,
+        languages=user_in.languages,
+        location=user_in.location,
+        cv_url=user_in.cv_url,
+    )
+    db.add(profile)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@router.post(
+    "/register/hospital",
+    response_model=UserResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Register a Hospital / Healthcare Facility",
+)
+def register_hospital(user_in: HospitalRegister, db: Session = Depends(get_db)):
+    """Public self-registration for hospitals recruiting nurses."""
+    existing_user = db.query(User).filter(User.email == user_in.email).first()
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email is already registered in NurseBridge."
+        )
+
+    user = User(
+        email=user_in.email,
+        hashed_password=get_password_hash(user_in.password),
+        full_name=user_in.full_name,
+        role=UserRole.HOSPITAL,
+        is_active=True,
+    )
+    db.add(user)
+    db.flush()
+
+    hospital = Hospital(
+        user_id=user.id,
+        name=user_in.hospital_name,
+        location=user_in.location,
+        contact_email=user_in.contact_email or user_in.email,
+        contact_person=user_in.contact_person or user_in.full_name,
+        phone=user_in.phone,
+    )
+    db.add(hospital)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@router.post(
+    "/register/college",
+    response_model=UserResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Register a Partner Nursing College",
+)
+def register_college(user_in: CollegeRegister, db: Session = Depends(get_db)):
+    """Public self-registration for partner nursing colleges."""
+    existing_user = db.query(User).filter(User.email == user_in.email).first()
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email is already registered in NurseBridge."
+        )
+
+    # Check for duplicate college code
+    code_exists = db.query(College).filter(College.code == user_in.code).first()
+    if code_exists:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"College code '{user_in.code}' is already in use."
+        )
+
+    user = User(
+        email=user_in.email,
+        hashed_password=get_password_hash(user_in.password),
+        full_name=user_in.full_name,
+        role=UserRole.COLLEGE,
+        is_active=True,
+    )
+    db.add(user)
+    db.flush()
+
+    college = College(
+        user_id=user.id,
+        name=user_in.college_name,
+        code=user_in.code,
+        location=user_in.location,
+        contact_person=user_in.contact_person or user_in.full_name,
+        phone=user_in.phone,
+    )
+    db.add(college)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
 
 
 @router.post("/login", response_model=Token)
