@@ -1,0 +1,1 @@
+"""NurseBridge FastAPI Application Package"""

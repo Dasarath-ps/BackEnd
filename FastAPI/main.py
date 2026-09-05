@@ -1,8 +1,7 @@
-from fastapi import FastAPI
+"""
+NurseBridge API Runner
+Delegates application instance from app.main for uvicorn compatibility.
+"""
+from app.main import app
 
-app=FastAPI()
-
-
-@app.get("/")
-def read_root():
-    return {"message": "Welcome to FastAPI"}    
+__all__ = ["app"]
